@@ -4,10 +4,8 @@ extern crate ash;
 use ash::version::{InstanceV1_0, EntryV1_0};
 use sdl2::video::{Window};
 use ash::{vk, Entry, Instance};
-use std::ffi::{CString, CStr};
+use std::ffi::{CString};
 use std::os::raw::c_char;
-
-use ash::extensions::khr::{Surface, XlibSurface};
 
 struct VulkanGod {
     window: Window,
@@ -69,27 +67,27 @@ impl VulkanGod {
         
         unsafe {
             instance = entry
-            .create_instance(&create_info, None)
+                .create_instance(&create_info, None)
                 .expect("Instance creation error");
 
             // recreate them from raw pointers so rust can deallocate them
             for raw in required_extensions_raw {
-                CString::from_raw(raw);
-            }
-        }
+                               CString::from_raw(raw);
+                           }
+                       }
 
-        return instance
-    }
-}
+                       return instance
+                   }
+               }
 
-impl Drop for VulkanGod {
-    fn drop(&mut self) {
-        unsafe {
-            self.instance.destroy_instance(None);
-        }
-    }
-}
+               impl Drop for VulkanGod {
+                   fn drop(&mut self) {
+                       unsafe {
+                           self.instance.destroy_instance(None);
+                       }
+                   }
+               }
 
-pub fn main() {    
-    let _vg = VulkanGod::new(800, 600);
-}
+               pub fn main() {    
+                   let _vg = VulkanGod::new(800, 600);
+               }
