@@ -48,7 +48,7 @@ impl VulkanGod {
         let required_extensions = window.vulkan_instance_extensions().unwrap();
 
         dbg!(&required_extensions);
-
+        
         // convert them to raw pointers
         let required_extensions_raw: Vec<_> = required_extensions.iter()
             .map(|&ext| CString::new(ext).unwrap().into_raw())
@@ -72,22 +72,22 @@ impl VulkanGod {
 
             // recreate them from raw pointers so rust can deallocate them
             for raw in required_extensions_raw {
-                               CString::from_raw(raw);
-                           }
-                       }
+                CString::from_raw(raw);
+            }
+        }
+        
+        return instance
+    }
+}
 
-                       return instance
-                   }
-               }
+impl Drop for VulkanGod {
+    fn drop(&mut self) {
+        unsafe {
+            self.instance.destroy_instance(None);
+        }
+    }
+}
 
-               impl Drop for VulkanGod {
-                   fn drop(&mut self) {
-                       unsafe {
-                           self.instance.destroy_instance(None);
-                       }
-                   }
-               }
-
-               pub fn main() {    
-                   let _vg = VulkanGod::new(800, 600);
-               }
+pub fn main() {    
+    let _vg = VulkanGod::new(800, 600);
+}
