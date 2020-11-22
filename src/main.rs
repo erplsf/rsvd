@@ -1,5 +1,5 @@
-use rsvd::vg_builder;
+use rsvd::vg::Vg;
 
 pub fn main() {
-    let _vg = vg_builder::VgBuilder::new(800, 600).build();
+    let _vg = Vg::new((800, 600));
 }
