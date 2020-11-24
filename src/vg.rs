@@ -1,6 +1,7 @@
+use ash::Device;
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
-use ash::version::InstanceV1_0;
+use ash::version::{InstanceV1_0, DeviceV1_0};
 use ash::vk::PhysicalDevice;
 use ash::{vk, Entry, Instance};
 use sdl2::video::Window;
@@ -17,6 +18,8 @@ pub struct Vg {
     debug_call_back: vk::DebugUtilsMessengerEXT,
     physical_device: PhysicalDevice,
     queue_family_index: u32,
+    device: Device,
+    queue: vk::Queue,
 }
 
 impl Vg {
@@ -28,10 +31,9 @@ impl Vg {
         let (debug_utils_loader, debug_call_back) =
             builder::setup_debug_messenger(&entry, &instance, &mut debug_info);
         let (surface_loader, surface) = builder::create_surface(&entry, &instance, &window);
-        let physical_device = builder::pick_physical_device(&instance);
-        let queue_family_index =
-            builder::pick_queue_family_index(&instance, &physical_device).unwrap();
-        builder::create_logical_device(queue_family_index);
+        let (physical_device, queue_family_index) = builder::pick_physical_device_and_index(&instance, &surface_loader, &surface);
+        let device = builder::create_logical_device(queue_family_index, &instance, &physical_device);
+        let queue = builder::get_device_queue(queue_family_index, 0, &device);
 
         Self {
             entry,
@@ -43,6 +45,8 @@ impl Vg {
             surface,
             physical_device,
             queue_family_index,
+            device,
+            queue
         }
     }
 }
@@ -50,6 +54,7 @@ impl Vg {
 impl Drop for Vg {
     fn drop(&mut self) {
         unsafe {
+            self.device.destroy_device(None);
             self.surface_loader.destroy_surface(self.surface, None);
             self.debug_utils_loader
                 .destroy_debug_utils_messenger(self.debug_call_back, None);

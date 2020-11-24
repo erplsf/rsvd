@@ -1,7 +1,9 @@
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
-use ash::version::{EntryV1_0, InstanceV1_0};
+use ash::extensions::khr::Swapchain;
+use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk::PhysicalDevice;
+use ash::Device;
 use ash::{vk, Entry, Instance};
 use sdl2::video::Window;
 use std::borrow::Cow;
@@ -127,7 +129,12 @@ pub fn create_surface(
     (surface_loader, surface)
 }
 
-pub fn pick_physical_device(instance: &Instance) -> PhysicalDevice {
+// TODO: make it so the function actually selects the best one, and not returns the first matching
+pub fn pick_physical_device_and_index(
+    instance: &Instance,
+    surface_loader: &Surface,
+    surface: &vk::SurfaceKHR,
+) -> (PhysicalDevice, u32) {
     let all_physical_devices: Vec<PhysicalDevice>;
 
     unsafe {
@@ -135,12 +142,21 @@ pub fn pick_physical_device(instance: &Instance) -> PhysicalDevice {
     }
 
     for device in all_physical_devices {
-        if is_device_suitable(instance, device) {
-            return device;
+        let queue_index = pick_queue_family_index(instance, &device).unwrap();
+        let device_supports_surface: bool;
+
+        unsafe {
+            device_supports_surface = surface_loader
+                .get_physical_device_surface_support(device, queue_index, *surface)
+                .unwrap();
+        }
+
+        if device_supports_surface && is_device_suitable(instance, device) {
+            return (device, queue_index);
         }
     }
 
-    panic!("Couldn't find a suitable device!");
+    panic!("Couldn't find a suitable device and queue!");
 }
 
 pub fn pick_queue_family_index(instance: &Instance, device: &PhysicalDevice) -> Option<u32> {
@@ -186,18 +202,63 @@ fn is_queue_family_suitable(queue_family_properties: &vk::QueueFamilyProperties)
     false
 }
 
-pub fn create_logical_device(queue_family_index: u32) {
+pub fn create_logical_device(
+    queue_family_index: u32,
+    instance: &Instance,
+    physical_device: &vk::PhysicalDevice,
+) -> Device {
+    // TODO: Allow caller to create many queues
     let queue_priorities = [1.0];
-    let queue_info = [
-        vk::DeviceQueueCreateInfo::builder()
-            .queue_family_index(queue_family_index)
-            .queue_priorities(&queue_priorities)
-            .build()
-    ];
+    let queue_info = [vk::DeviceQueueCreateInfo::builder()
+                      .queue_family_index(queue_family_index)
+                      .queue_priorities(&queue_priorities)
+                      .build()];
+    let device_extension_names_raw = [Swapchain::name().as_ptr()];
+    let device_features = vk::PhysicalDeviceFeatures::builder();
     let device_create_info = vk::DeviceCreateInfo::builder()
+    // TODO: add shared/explicit layers here
         .queue_create_infos(&queue_info)
-        .enabled_extension_names(&[]);
-    // .enabled_features();    
+        .enabled_extension_names(&device_extension_names_raw)
+        .enabled_features(&device_features);
+
+    let device: Device;
+
+    unsafe {
+        device = instance
+            .create_device(*physical_device, &device_create_info, None)
+            .unwrap();
+    }
+
+    device
+}
+
+// TODO: make it so it actually returns vector of queues, if we want to have more than one
+pub fn get_device_queue(queue_family_index: u32, queue_index: u32, device: &Device) -> vk::Queue {
+    let device_queue: vk::Queue;
+
+    unsafe {
+        device_queue = device.get_device_queue(queue_family_index, queue_index);
+    }
+
+    device_queue
+}
+
+pub fn pick_surface_format(
+    physical_device: &PhysicalDevice,
+    surface_loader: &Surface,
+    surface: &vk::SurfaceKHR,
+) -> vk::SurfaceFormatKHR {
+    let available_formats = surface_loader
+        .get_physical_device_surface_formats(*physical_device, *surface)
+        .unwrap();
+
+    for format in available_formats {
+        if format.format == vk::Format::R8G8B8A8_SRGB
+            && format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
+        {
+            return format;
+        }
+    }
 }
 
 unsafe extern "system" fn vulkan_debug_callback(
