@@ -248,9 +248,12 @@ pub fn pick_surface_format(
     surface_loader: &Surface,
     surface: &vk::SurfaceKHR,
 ) -> vk::SurfaceFormatKHR {
-    let available_formats = surface_loader
-        .get_physical_device_surface_formats(*physical_device, *surface)
-        .unwrap();
+    let available_formats: Vec<vk::SurfaceFormatKHR>;
+    unsafe {
+        available_formats = surface_loader
+            .get_physical_device_surface_formats(*physical_device, *surface)
+            .unwrap();
+    }
 
     for format in available_formats {
         if format.format == vk::Format::R8G8B8A8_SRGB
@@ -259,6 +262,8 @@ pub fn pick_surface_format(
             return format;
         }
     }
+
+    panic!("Couldn't find a suitable format!");
 }
 
 unsafe extern "system" fn vulkan_debug_callback(
