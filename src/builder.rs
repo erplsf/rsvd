@@ -183,9 +183,7 @@ fn is_device_suitable(instance: &Instance, device: PhysicalDevice) -> bool {
         properties = instance.get_physical_device_properties(device);
     }
 
-    if properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU
-        && features.geometry_shader == vk::TRUE
-    {
+    if features.geometry_shader == vk::TRUE {
         return true;
     }
     false
