@@ -175,17 +175,23 @@ pub fn pick_queue_family_index(instance: &Instance, device: &PhysicalDevice) -> 
     None
 }
 
-fn is_device_suitable(instance: &Instance, device: PhysicalDevice) -> bool {
+fn is_device_suitable(instance: &Instance, device: &PhysicalDevice) -> bool {
     let features: vk::PhysicalDeviceFeatures;
     let properties: vk::PhysicalDeviceProperties;
     unsafe {
-        features = instance.get_physical_device_features(device);
-        properties = instance.get_physical_device_properties(device);
+        features = instance.get_physical_device_features(*device);
+        properties = instance.get_physical_device_properties(*device);
     }
 
     if features.geometry_shader == vk::TRUE {
         return true;
+    } else {
+        false
     }
+}
+
+fn check_device_extension_support(instance: &Instance, device: &PhysicalDevice) -> bool {
+    instance.enumerate_device_extension_properties(*device);
     false
 }
 
